@@ -5,21 +5,16 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score
-from sklearn.utils import resample
 
 app = Flask(__name__)
 
-# Global variables
 lr_model = None
 rf_model = None
 scaler = None
-model_trained = False
+trained = False
 
 
-# ─────────────────────────────────────────
-# GENERATE DATA (NO CSV ANYWHERE)
-# ─────────────────────────────────────────
+# -------- DATA --------
 def generate_data(n=1000):
     np.random.seed(42)
 
@@ -40,26 +35,22 @@ def generate_data(n=1000):
         "is_fraud": 1
     })
 
-    df = pd.concat([df_legit, df_fraud]).sample(frac=1)
-    return df
+    return pd.concat([df_legit, df_fraud]).sample(frac=1)
 
 
-# ─────────────────────────────────────────
-# TRAIN MODEL (LIGHTWEIGHT)
-# ─────────────────────────────────────────
-def train_model():
-    global lr_model, rf_model, scaler, model_trained
+# -------- TRAIN --------
+def train():
+    global lr_model, rf_model, scaler, trained
 
     df = generate_data(1000)
 
     X = df[["amount", "distance", "transactions"]]
     y = df["is_fraud"]
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(X, y)
 
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
 
     lr_model = LogisticRegression()
     rf_model = RandomForestClassifier(n_estimators=50)
@@ -67,19 +58,15 @@ def train_model():
     lr_model.fit(X_train, y_train)
     rf_model.fit(X_train, y_train)
 
-    model_trained = True
+    trained = True
 
 
-# ─────────────────────────────────────────
-# ROUTES
-# ─────────────────────────────────────────
+# -------- ROUTES --------
 @app.route("/")
 def home():
-    global model_trained
-
-    if not model_trained:
-        train_model()
-
+    global trained
+    if not trained:
+        train()
     return render_template("index.html")
 
 
@@ -102,8 +89,6 @@ def predict():
     })
 
 
-# ─────────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────────
+# -------- MAIN --------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
