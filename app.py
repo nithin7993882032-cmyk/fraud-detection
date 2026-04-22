@@ -5,10 +5,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import (
-    accuracy_score, confusion_matrix,
-    roc_auc_score, precision_score, recall_score, f1_score
-)
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.utils import resample
 import warnings
 warnings.filterwarnings("ignore")
@@ -19,14 +16,13 @@ app = Flask(__name__)
 lr_model = None
 rf_model = None
 scaler = None
-feature_columns = None
 model_metrics = {}
 sample_df = None
 
 
-# ─────────────────────────────────────────────────────────────
-# DATA GENERATION
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────
+# GENERATE DATA (NO CSV REQUIRED)
+# ─────────────────────────────────────────
 def generate_sample_dataset(n_samples=1000):
     np.random.seed(42)
 
@@ -57,38 +53,38 @@ def generate_sample_dataset(n_samples=1000):
         "is_fraud": 1
     })
 
-    df = pd.concat([legit, fraud]).sample(frac=1)
+    df = pd.concat([legit, fraud]).sample(frac=1, random_state=42)
     return df
 
 
-# ─────────────────────────────────────────────────────────────
-# BALANCING
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────
+# BALANCE DATA
+# ─────────────────────────────────────────
 def balance_dataset(X, y):
     df = pd.concat([X, y], axis=1)
     majority = df[df["is_fraud"] == 0]
     minority = df[df["is_fraud"] == 1]
 
-    minority_upsampled = resample(minority, replace=True,
-                                 n_samples=len(majority), random_state=42)
+    minority_up = resample(minority, replace=True,
+                           n_samples=len(majority), random_state=42)
 
-    balanced = pd.concat([majority, minority_upsampled])
+    balanced = pd.concat([majority, minority_up])
     return balanced.drop("is_fraud", axis=1), balanced["is_fraud"]
 
 
-# ─────────────────────────────────────────────────────────────
-# TRAINING
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────
+# TRAIN MODELS
+# ─────────────────────────────────────────
 def train_models(df):
-    global lr_model, rf_model, scaler, feature_columns, model_metrics
+    global lr_model, rf_model, scaler, model_metrics
 
-    feature_columns = [
+    features = [
         "transaction_amount","time_since_last_txn","num_transactions_today",
         "distance_from_home","is_foreign_transaction","card_present",
         "hour_of_day","merchant_risk_score"
     ]
 
-    X = df[feature_columns]
+    X = df[features]
     y = df["is_fraud"]
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -107,7 +103,7 @@ def train_models(df):
     rf_model = RandomForestClassifier(n_estimators=50)
     rf_model.fit(X_train, y_train)
 
-    preds = lr_model.predict(X_test)
+    preds = rf_model.predict(X_test)
 
     model_metrics = {
         "accuracy": round(accuracy_score(y_test, preds)*100,2),
@@ -117,9 +113,9 @@ def train_models(df):
     }
 
 
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────
 # ROUTES
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────
 @app.route("/")
 def index():
     global sample_df
@@ -156,8 +152,8 @@ def predict():
     })
 
 
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────
 # MAIN
-# ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
