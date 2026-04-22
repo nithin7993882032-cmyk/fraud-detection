@@ -14,7 +14,7 @@ scaler = None
 trained = False
 
 
-# -------- DATA --------
+# ---------- Generate Dummy Data ----------
 def generate_data(n=1000):
     np.random.seed(42)
 
@@ -38,7 +38,7 @@ def generate_data(n=1000):
     return pd.concat([df_legit, df_fraud]).sample(frac=1)
 
 
-# -------- TRAIN --------
+# ---------- Train Model ----------
 def train():
     global lr_model, rf_model, scaler, trained
 
@@ -61,7 +61,7 @@ def train():
     trained = True
 
 
-# -------- ROUTES --------
+# ---------- Routes ----------
 @app.route("/")
 def home():
     global trained
@@ -89,6 +89,6 @@ def predict():
     })
 
 
-# -------- MAIN --------
+# ---------- Main ----------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
