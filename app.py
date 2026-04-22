@@ -1,72 +1,16 @@
-=from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify
 import numpy as np
-import pandas as pd
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
 app = Flask(__name__)
 
-lr_model = None
-rf_model = None
-scaler = None
-trained = False
+# Simple dummy prediction (no sklearn issues)
+def predict_fraud(amount, distance, transactions):
+    score = (amount * 0.002) + (distance * 0.01) + (transactions * 0.1)
+    return min(score, 1.0)
 
 
-# ---------- Generate Dummy Data ----------
-def generate_data(n=1000):
-    np.random.seed(42)
-
-    legit = int(n * 0.95)
-    fraud = n - legit
-
-    df_legit = pd.DataFrame({
-        "amount": np.random.normal(100, 50, legit),
-        "distance": np.random.normal(10, 5, legit),
-        "transactions": np.random.randint(1, 5, legit),
-        "is_fraud": 0
-    })
-
-    df_fraud = pd.DataFrame({
-        "amount": np.random.normal(1000, 300, fraud),
-        "distance": np.random.normal(50, 20, fraud),
-        "transactions": np.random.randint(5, 15, fraud),
-        "is_fraud": 1
-    })
-
-    return pd.concat([df_legit, df_fraud]).sample(frac=1)
-
-
-# ---------- Train Model ----------
-def train():
-    global lr_model, rf_model, scaler, trained
-
-    df = generate_data(1000)
-
-    X = df[["amount", "distance", "transactions"]]
-    y = df["is_fraud"]
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y)
-
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-
-    lr_model = LogisticRegression()
-    rf_model = RandomForestClassifier(n_estimators=50)
-
-    lr_model.fit(X_train, y_train)
-    rf_model.fit(X_train, y_train)
-
-    trained = True
-
-
-# ---------- Routes ----------
 @app.route("/")
 def home():
-    global trained
-    if not trained:
-        train()
     return render_template("index.html")
 
 
@@ -78,17 +22,21 @@ def predict():
     distance = float(data.get("distance", 0))
     transactions = float(data.get("transactions", 0))
 
-    X = np.array([[amount, distance, transactions]])
-    X = scaler.transform(X)
+    prob = predict_fraud(amount, distance, transactions)
 
-    prob = rf_model.predict_proba(X)[0][1]
+    if prob > 0.8:
+        risk = "HIGH RISK"
+    elif prob > 0.5:
+        risk = "MEDIUM RISK"
+    else:
+        risk = "LOW RISK"
 
     return jsonify({
         "probability": round(prob * 100, 2),
-        "result": "Fraud" if prob > 0.5 else "Legit"
+        "result": "Fraud" if prob > 0.5 else "Legit",
+        "risk": risk
     })
 
 
-# ---------- Main ----------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
