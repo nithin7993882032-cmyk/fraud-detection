@@ -14,23 +14,23 @@ scaler = None
 trained = False
 
 
-# ---------- Generate Dummy Data ----------
-def generate_data(n=1000):
+# -------- DATA --------
+def generate_data(n=1500):
     np.random.seed(42)
 
     legit = int(n * 0.95)
     fraud = n - legit
 
     df_legit = pd.DataFrame({
-        "amount": np.random.normal(100, 50, legit),
+        "amount": np.random.normal(100, 40, legit),
         "distance": np.random.normal(10, 5, legit),
         "transactions": np.random.randint(1, 5, legit),
         "is_fraud": 0
     })
 
     df_fraud = pd.DataFrame({
-        "amount": np.random.normal(1000, 300, fraud),
-        "distance": np.random.normal(50, 20, fraud),
+        "amount": np.random.normal(1200, 300, fraud),
+        "distance": np.random.normal(60, 20, fraud),
         "transactions": np.random.randint(5, 15, fraud),
         "is_fraud": 1
     })
@@ -38,11 +38,11 @@ def generate_data(n=1000):
     return pd.concat([df_legit, df_fraud]).sample(frac=1)
 
 
-# ---------- Train Model ----------
+# -------- TRAIN --------
 def train():
     global lr_model, rf_model, scaler, trained
 
-    df = generate_data(1000)
+    df = generate_data()
 
     X = df[["amount", "distance", "transactions"]]
     y = df["is_fraud"]
@@ -53,7 +53,7 @@ def train():
     X_train = scaler.fit_transform(X_train)
 
     lr_model = LogisticRegression()
-    rf_model = RandomForestClassifier(n_estimators=50)
+    rf_model = RandomForestClassifier(n_estimators=100)
 
     lr_model.fit(X_train, y_train)
     rf_model.fit(X_train, y_train)
@@ -61,7 +61,7 @@ def train():
     trained = True
 
 
-# ---------- Routes ----------
+# -------- ROUTES --------
 @app.route("/")
 def home():
     global trained
@@ -83,12 +83,20 @@ def predict():
 
     prob = rf_model.predict_proba(X)[0][1]
 
+    # Risk levels
+    if prob > 0.8:
+        risk = "HIGH RISK"
+    elif prob > 0.5:
+        risk = "MEDIUM RISK"
+    else:
+        risk = "LOW RISK"
+
     return jsonify({
         "probability": round(prob * 100, 2),
-        "result": "Fraud" if prob > 0.5 else "Legit"
+        "result": "Fraud" if prob > 0.5 else "Legit",
+        "risk": risk
     })
 
 
-# ---------- Main ----------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
