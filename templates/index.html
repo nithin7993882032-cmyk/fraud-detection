@@ -1,145 +1,967 @@
-<!DOCTYPE html>
-<html>
+=<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>AI Fraud Detection Dashboard</title>
-    <style>
-        body {
-            font-family: Arial;
-            background: linear-gradient(135deg, #0f172a, #1e293b);
-            color: white;
-            text-align: center;
-            padding: 30px;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FraudShield AI — Transaction Intelligence</title>
 
-        h1 {
-            margin-bottom: 20px;
-        }
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
 
-        .card {
-            background: #1e293b;
-            padding: 20px;
-            margin: 20px auto;
-            width: 320px;
-            border-radius: 10px;
-        }
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 
-        input {
-            padding: 10px;
-            margin: 8px;
-            width: 220px;
-            border-radius: 5px;
-            border: none;
-        }
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
 
-        button {
-            padding: 10px 20px;
-            background: #22c55e;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-        button:hover {
-            background: #16a34a;
-        }
-
-        #result {
-            margin-top: 15px;
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        table {
-            margin: auto;
-            margin-top: 10px;
-            border-collapse: collapse;
-        }
-
-        td {
-            padding: 10px;
-            border: 1px solid white;
-            width: 50px;
-        }
-    </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
-
 <body>
 
-<h1>💳 AI Fraud Detection System</h1>
+<!-- ═══════════════════ NAVBAR ═══════════════════ -->
+<nav class="navbar navbar-expand-lg navbar-dark sticky-top" id="mainNav">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+      <div class="brand-icon">
+        <i class="bi bi-shield-check"></i>
+      </div>
+      <div>
+        <span class="brand-name">FraudShield</span>
+        <span class="brand-tag">AI</span>
+      </div>
+    </a>
 
-<!-- Prediction Card -->
-<div class="card">
-    <h2>🔍 Transaction Prediction</h2>
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
 
-    <input id="amount" placeholder="Transaction Amount"><br>
-    <input id="distance" placeholder="Distance"><br>
-    <input id="transactions" placeholder="Transactions"><br>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav ms-auto gap-1">
+        <li class="nav-item"><a class="nav-link nav-pill" href="#dashboard">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link nav-pill" href="#predict">Predict</a></li>
+        <li class="nav-item"><a class="nav-link nav-pill" href="#upload">Bulk Scan</a></li>
+        <li class="nav-item"><a class="nav-link nav-pill" href="#models">Models</a></li>
+      </ul>
+      <button class="btn btn-retrain ms-3" onclick="retrainModels()">
+        <i class="bi bi-arrow-clockwise me-1"></i> Retrain
+      </button>
+    </div>
+  </div>
+</nav>
 
-    <button onclick="predict()">Check Fraud</button>
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<section class="hero-section">
+  <div class="hero-grid"></div>
+  <div class="container">
+    <div class="row align-items-center min-vh-75">
+      <div class="col-lg-7">
+        <div class="hero-badge mb-3">
+          <span class="badge-dot"></span>
+          ML-Powered Detection System · Live
+        </div>
+        <h1 class="hero-title">
+          Detect Fraud<br/>
+          <span class="hero-accent">Before It Strikes</span>
+        </h1>
+        <p class="hero-desc">
+          Dual-model machine learning engine combining Logistic Regression & Random Forest 
+          to flag fraudulent transactions in real time with high accuracy.
+        </p>
+        <div class="hero-stats d-flex gap-4 mt-4">
+          <div class="hero-stat">
+            <div class="hero-stat-val" id="heroAccuracy">—</div>
+            <div class="hero-stat-label">RF Accuracy</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-val" id="heroAUC">—</div>
+            <div class="hero-stat-label">ROC-AUC</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-val" id="heroDataset">5K</div>
+            <div class="hero-stat-label">Training Samples</div>
+          </div>
+        </div>
+        <div class="mt-4 d-flex gap-3">
+          <a href="#predict" class="btn btn-primary-cta">
+            <i class="bi bi-lightning-charge-fill me-2"></i>Try Prediction
+          </a>
+          <a href="/api/sample-csv" class="btn btn-outline-cta">
+            <i class="bi bi-download me-2"></i>Sample CSV
+          </a>
+        </div>
+      </div>
+      <div class="col-lg-5 d-none d-lg-flex justify-content-center">
+        <div class="hero-visual">
+          <div class="pulse-ring"></div>
+          <div class="pulse-ring delay-1"></div>
+          <div class="pulse-ring delay-2"></div>
+          <div class="shield-center">
+            <i class="bi bi-shield-shaded"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <div id="result"></div>
-</div>
+<!-- ═══════════════════ METRIC CARDS ═══════════════════ -->
+<section class="section-pad" id="dashboard">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-badge">Live Metrics</div>
+      <h2 class="section-title">Model Performance Dashboard</h2>
+    </div>
 
+    <div class="row g-4 mb-5">
+      <div class="col-6 col-lg-3">
+        <div class="metric-card">
+          <div class="metric-icon bg-blue"><i class="bi bi-bullseye"></i></div>
+          <div class="metric-val" id="rfAccuracy">—</div>
+          <div class="metric-label">RF Accuracy</div>
+          <div class="metric-sub">Random Forest</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="metric-card">
+          <div class="metric-icon bg-green"><i class="bi bi-graph-up-arrow"></i></div>
+          <div class="metric-val" id="rfAUC">—</div>
+          <div class="metric-label">ROC-AUC</div>
+          <div class="metric-sub">Random Forest</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="metric-card">
+          <div class="metric-icon bg-orange"><i class="bi bi-crosshair"></i></div>
+          <div class="metric-val" id="rfPrecision">—</div>
+          <div class="metric-label">Precision</div>
+          <div class="metric-sub">Random Forest</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="metric-card">
+          <div class="metric-icon bg-red"><i class="bi bi-radar"></i></div>
+          <div class="metric-val" id="rfRecall">—</div>
+          <div class="metric-label">Recall</div>
+          <div class="metric-sub">Random Forest</div>
+        </div>
+      </div>
+    </div>
 
-<!-- Model Performance -->
-<div class="card">
-    <h2>📊 Model Performance</h2>
+    <!-- Charts Row -->
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h5><i class="bi bi-pie-chart-fill me-2"></i>Dataset Distribution</h5>
+          </div>
+          <div class="chart-body">
+            <canvas id="distributionChart" height="220"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h5><i class="bi bi-bar-chart-fill me-2"></i>Model Comparison</h5>
+          </div>
+          <div class="chart-body">
+            <canvas id="modelCompareChart" height="220"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h5><i class="bi bi-grid-3x3 me-2"></i>Confusion Matrix (RF)</h5>
+          </div>
+          <div class="chart-body d-flex flex-column align-items-center justify-content-center" style="min-height:220px">
+            <div class="cm-grid" id="confusionMatrix">
+              <div class="cm-label-row">
+                <span></span><span class="cm-axis">Predicted: 0</span><span class="cm-axis">Predicted: 1</span>
+              </div>
+              <div class="cm-row">
+                <span class="cm-axis-label">Actual: 0</span>
+                <div class="cm-cell cm-tn" id="cmTN">—</div>
+                <div class="cm-cell cm-fp" id="cmFP">—</div>
+              </div>
+              <div class="cm-row">
+                <span class="cm-axis-label">Actual: 1</span>
+                <div class="cm-cell cm-fn" id="cmFN">—</div>
+                <div class="cm-cell cm-tp" id="cmTP">—</div>
+              </div>
+            </div>
+            <div class="cm-legend mt-3">
+              <span class="cm-legend-item"><span class="dot dot-green"></span> TN</span>
+              <span class="cm-legend-item"><span class="dot dot-red"></span> FP</span>
+              <span class="cm-legend-item"><span class="dot dot-orange"></span> FN</span>
+              <span class="cm-legend-item"><span class="dot dot-blue"></span> TP</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <p>Logistic Regression Accuracy: {{ metrics.lr_acc }}%</p>
-    <p>Random Forest Accuracy: {{ metrics.rf_acc }}%</p>
-</div>
+<!-- ═══════════════════ PREDICT FORM ═══════════════════ -->
+<section class="section-pad section-alt" id="predict">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-badge">Real-Time Analysis</div>
+      <h2 class="section-title">Single Transaction Prediction</h2>
+      <p class="section-sub">Enter transaction details below to get an instant fraud assessment</p>
+    </div>
 
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="predict-card">
+          <div class="row g-4">
+            <!-- Form Fields -->
+            <div class="col-md-6 col-lg-3">
+              <div class="input-group-custom">
+                <label>Transaction Amount ($)</label>
+                <div class="input-wrap">
+                  <i class="bi bi-currency-dollar input-icon"></i>
+                  <input type="number" id="f_amount" placeholder="e.g. 250.00" step="0.01" min="0" />
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+              <div class="input-group-custom">
+                <label>Hours Since Last Transaction</label>
+                <div class="input-wrap">
+                  <i class="bi bi-clock input-icon"></i>
+                  <input type="number" id="f_time" placeholder="e.g. 12" step="0.1" min="0" />
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+              <div class="input-group-custom">
+                <label>Transactions Today</label>
+                <div class="input-wrap">
+                  <i class="bi bi-hash input-icon"></i>
+                  <input type="number" id="f_txn_count" placeholder="e.g. 3" min="0" />
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+              <div class="input-group-custom">
+                <label>Distance from Home (km)</label>
+                <div class="input-wrap">
+                  <i class="bi bi-geo-alt input-icon"></i>
+                  <input type="number" id="f_distance" placeholder="e.g. 10" step="0.1" min="0" />
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+              <div class="input-group-custom">
+                <label>Hour of Day (0–23)</label>
+                <div class="input-wrap">
+                  <i class="bi bi-sun input-icon"></i>
+                  <input type="number" id="f_hour" placeholder="e.g. 14" min="0" max="23" />
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+              <div class="input-group-custom">
+                <label>Merchant Risk Score (0–1)</label>
+                <div class="input-wrap">
+                  <i class="bi bi-exclamation-triangle input-icon"></i>
+                  <input type="number" id="f_risk" placeholder="e.g. 0.2" step="0.01" min="0" max="1" />
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+              <div class="input-group-custom">
+                <label>Foreign Transaction?</label>
+                <div class="input-wrap">
+                  <i class="bi bi-globe input-icon"></i>
+                  <select id="f_foreign">
+                    <option value="0">No (Domestic)</option>
+                    <option value="1">Yes (Foreign)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 col-lg-3">
+              <div class="input-group-custom">
+                <label>Card Present?</label>
+                <div class="input-wrap">
+                  <i class="bi bi-credit-card input-icon"></i>
+                  <select id="f_card">
+                    <option value="1">Yes (Physical)</option>
+                    <option value="0">No (Online/CNP)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
 
-<!-- Data Distribution -->
-<div class="card">
-    <h2>📉 Data Distribution</h2>
+          <!-- Quick Fill Buttons -->
+          <div class="d-flex gap-3 mt-4 flex-wrap">
+            <button class="btn btn-quick" onclick="fillSample('legit')">
+              <i class="bi bi-check-circle me-1"></i>Fill Legit Sample
+            </button>
+            <button class="btn btn-quick btn-quick-fraud" onclick="fillSample('fraud')">
+              <i class="bi bi-exclamation-circle me-1"></i>Fill Fraud Sample
+            </button>
+            <button class="btn btn-predict ms-auto" onclick="predictFraud()">
+              <i class="bi bi-lightning-charge-fill me-2"></i>Analyze Transaction
+            </button>
+          </div>
+        </div>
 
-    <p>Fraud Transactions: {{ metrics.fraud_count }}</p>
-    <p>Legitimate Transactions: {{ metrics.legit_count }}</p>
-</div>
+        <!-- Result Box -->
+        <div id="predictionResult" class="prediction-result d-none mt-4">
+          <div class="row align-items-center">
+            <div class="col-md-5 text-center">
+              <div id="verdictBadge" class="verdict-badge">
+                <i id="verdictIcon" class="bi"></i>
+                <div id="verdictText"></div>
+              </div>
+            </div>
+            <div class="col-md-7">
+              <div class="prob-bars">
+                <div class="prob-row">
+                  <span>Legitimate</span>
+                  <div class="prob-bar-track">
+                    <div class="prob-bar prob-bar-legit" id="barLegit"></div>
+                  </div>
+                  <span id="txtLegit" class="prob-pct">0%</span>
+                </div>
+                <div class="prob-row mt-3">
+                  <span>Fraud Risk</span>
+                  <div class="prob-bar-track">
+                    <div class="prob-bar prob-bar-fraud" id="barFraud"></div>
+                  </div>
+                  <span id="txtFraud" class="prob-pct">0%</span>
+                </div>
+              </div>
+              <div class="model-breakdown mt-4">
+                <div class="breakdown-item">
+                  <span>Logistic Regression</span>
+                  <span id="lrProb" class="breakdown-val">—</span>
+                </div>
+                <div class="breakdown-item">
+                  <span>Random Forest</span>
+                  <span id="rfProb" class="breakdown-val">—</span>
+                </div>
+                <div class="breakdown-item">
+                  <span>Risk Level</span>
+                  <span id="riskLevel" class="breakdown-val">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
+      </div>
+    </div>
+  </div>
+</section>
 
-<!-- Confusion Matrix -->
-<div class="card">
-    <h2>📊 Confusion Matrix</h2>
+<!-- ═══════════════════ BULK UPLOAD ═══════════════════ -->
+<section class="section-pad" id="upload">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-badge">Batch Analysis</div>
+      <h2 class="section-title">Bulk Transaction Scanner</h2>
+      <p class="section-sub">Upload a CSV file to scan multiple transactions at once</p>
+    </div>
 
-    <table>
-        <tr>
-            <td>{{ metrics.cm[0][0] }}</td>
-            <td>{{ metrics.cm[0][1] }}</td>
-        </tr>
-        <tr>
-            <td>{{ metrics.cm[1][0] }}</td>
-            <td>{{ metrics.cm[1][1] }}</td>
-        </tr>
-    </table>
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="upload-zone" id="uploadZone">
+          <div class="upload-inner" onclick="document.getElementById('csvFile').click()">
+            <i class="bi bi-cloud-arrow-up-fill upload-icon"></i>
+            <div class="upload-text">Drop CSV file here or click to browse</div>
+            <div class="upload-hint">Requires: transaction_amount, time_since_last_txn, num_transactions_today,<br/>distance_from_home, is_foreign_transaction, card_present, hour_of_day, merchant_risk_score</div>
+            <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleFileUpload(this)" />
+            <button class="btn btn-upload-cta mt-3">
+              <i class="bi bi-folder2-open me-2"></i>Browse Files
+            </button>
+          </div>
+        </div>
 
-    <p style="font-size:12px;">
-        (Top-left: True Negatives, Top-right: False Positives)<br>
-        (Bottom-left: False Negatives, Bottom-right: True Positives)
+        <!-- Upload Progress -->
+        <div id="uploadProgress" class="d-none mt-3">
+          <div class="progress-custom">
+            <div class="progress-bar-custom" id="progressBar"></div>
+          </div>
+          <div class="progress-label" id="progressLabel">Scanning transactions…</div>
+        </div>
+
+        <!-- Upload Results -->
+        <div id="uploadResults" class="d-none mt-4">
+          <div class="row g-3 mb-4">
+            <div class="col-4">
+              <div class="mini-stat total">
+                <div class="mini-val" id="totalCount">0</div>
+                <div class="mini-label">Total</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="mini-stat legit">
+                <div class="mini-val" id="legitCount">0</div>
+                <div class="mini-label">Legitimate</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="mini-stat fraud">
+                <div class="mini-val" id="fraudCount">0</div>
+                <div class="mini-label">Fraudulent</div>
+              </div>
+            </div>
+          </div>
+          <div class="result-table-wrap">
+            <table class="result-table" id="resultTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Amount</th>
+                  <th>Fraud Prob.</th>
+                  <th>Verdict</th>
+                </tr>
+              </thead>
+              <tbody id="resultTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ MODEL INFO ═══════════════════ -->
+<section class="section-pad section-alt" id="models">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-badge">Architecture</div>
+      <h2 class="section-title">How The Models Work</h2>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <div class="model-card">
+          <div class="model-header">
+            <div class="model-num">01</div>
+            <div>
+              <div class="model-name">Logistic Regression</div>
+              <div class="model-type">Linear Classifier</div>
+            </div>
+            <div class="model-badge lr">LR</div>
+          </div>
+          <p class="model-desc">
+            A statistical model that estimates the probability of a transaction being fraudulent 
+            using a sigmoid function. Fast, interpretable, and works well as a baseline.
+          </p>
+          <div class="model-metrics-row">
+            <div class="mm-item">
+              <span class="mm-val" id="lrAccCard">—</span>
+              <span class="mm-label">Accuracy</span>
+            </div>
+            <div class="mm-item">
+              <span class="mm-val" id="lrAUCCard">—</span>
+              <span class="mm-label">ROC-AUC</span>
+            </div>
+            <div class="mm-item">
+              <span class="mm-val" id="lrF1Card">—</span>
+              <span class="mm-label">F1 Score</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="model-card model-card-rf">
+          <div class="model-header">
+            <div class="model-num">02</div>
+            <div>
+              <div class="model-name">Random Forest</div>
+              <div class="model-type">Ensemble Classifier</div>
+            </div>
+            <div class="model-badge rf">RF</div>
+          </div>
+          <p class="model-desc">
+            An ensemble of 100 decision trees that vote on the outcome. Handles non-linear 
+            patterns, outliers, and complex feature interactions — typically outperforms LR on fraud.
+          </p>
+          <div class="model-metrics-row">
+            <div class="mm-item">
+              <span class="mm-val" id="rfAccCard">—</span>
+              <span class="mm-label">Accuracy</span>
+            </div>
+            <div class="mm-item">
+              <span class="mm-val" id="rfAUCCard">—</span>
+              <span class="mm-label">ROC-AUC</span>
+            </div>
+            <div class="mm-item">
+              <span class="mm-val" id="rfF1Card">—</span>
+              <span class="mm-label">F1 Score</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features Grid -->
+    <div class="row g-3 mt-4">
+      <div class="col-12">
+        <div class="features-list-card">
+          <h5 class="mb-4"><i class="bi bi-layers me-2"></i>Input Features Used</h5>
+          <div class="row g-3">
+            <div class="col-6 col-md-3" data-label="transaction_amount">
+              <div class="feat-pill">
+                <i class="bi bi-currency-dollar"></i>
+                <span>Transaction Amount</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="feat-pill">
+                <i class="bi bi-clock"></i>
+                <span>Time Since Last Txn</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="feat-pill">
+                <i class="bi bi-hash"></i>
+                <span>Txns Today Count</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="feat-pill">
+                <i class="bi bi-geo-alt"></i>
+                <span>Distance from Home</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="feat-pill">
+                <i class="bi bi-globe"></i>
+                <span>Foreign Transaction</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="feat-pill">
+                <i class="bi bi-credit-card"></i>
+                <span>Card Present</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="feat-pill">
+                <i class="bi bi-sun"></i>
+                <span>Hour of Day</span>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="feat-pill">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span>Merchant Risk Score</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<footer class="site-footer">
+  <div class="container text-center">
+    <div class="footer-logo"><i class="bi bi-shield-check me-2"></i>FraudShield AI</div>
+    <p class="footer-note">College ML Project · Built with Flask, Scikit-learn & Bootstrap · Educational Purpose Only</p>
+    <p class="footer-stack">
+      <span>Python 3</span><span>Flask</span><span>Scikit-learn</span>
+      <span>Pandas</span><span>Bootstrap 5</span><span>Chart.js</span>
     </p>
+  </div>
+</footer>
+
+<!-- Toast Notification -->
+<div class="toast-wrap" id="toastWrap">
+  <div class="toast-msg" id="toastMsg"></div>
 </div>
 
+<!-- Loader Overlay -->
+<div id="loaderOverlay" class="loader-overlay d-none">
+  <div class="loader-box">
+    <div class="loader-spinner"></div>
+    <div class="loader-text" id="loaderText">Processing…</div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-function predict() {
-    fetch("/predict", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            amount: document.getElementById("amount").value,
-            distance: document.getElementById("distance").value,
-            transactions: document.getElementById("transactions").value
-        })
-    })
-    .then(res => res.json())
+/* ═══════════════════════════════════════════
+   FraudShield AI — Frontend Logic
+   ═══════════════════════════════════════════ */
+
+let distributionChart = null;
+let modelCompareChart = null;
+
+// ── Load metrics on page load ────────────────────────────────────────────────
+window.addEventListener("DOMContentLoaded", () => {
+  loadMetrics();
+});
+
+async function loadMetrics() {
+  try {
+    const res = await fetch("/api/metrics");
+    const data = await res.json();
+    updateDashboard(data);
+  } catch (e) {
+    showToast("Failed to load metrics", "error");
+  }
+}
+
+function updateDashboard(data) {
+  const rf = data.rf;
+  const lr = data.lr;
+  const ds = data.dataset;
+
+  // Hero stats
+  setText("heroAccuracy", rf.accuracy + "%");
+  setText("heroAUC", rf.roc_auc + "%");
+  setText("heroDataset", (ds.total / 1000).toFixed(1) + "K");
+
+  // Metric cards
+  setText("rfAccuracy", rf.accuracy + "%");
+  setText("rfAUC", rf.roc_auc + "%");
+  setText("rfPrecision", rf.precision + "%");
+  setText("rfRecall", rf.recall + "%");
+
+  // Confusion matrix
+  setText("cmTN", rf.tn.toLocaleString());
+  setText("cmFP", rf.fp.toLocaleString());
+  setText("cmFN", rf.fn.toLocaleString());
+  setText("cmTP", rf.tp.toLocaleString());
+
+  // Model cards
+  setText("lrAccCard", lr.accuracy + "%");
+  setText("lrAUCCard", lr.roc_auc + "%");
+  setText("lrF1Card", lr.f1 + "%");
+  setText("rfAccCard", rf.accuracy + "%");
+  setText("rfAUCCard", rf.roc_auc + "%");
+  setText("rfF1Card", rf.f1 + "%");
+
+  // Charts
+  renderDistributionChart(ds);
+  renderModelCompareChart(lr, rf);
+}
+
+// ── Distribution Doughnut Chart ──────────────────────────────────────────────
+function renderDistributionChart(ds) {
+  const ctx = document.getElementById("distributionChart").getContext("2d");
+  if (distributionChart) distributionChart.destroy();
+
+  distributionChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["Legitimate", "Fraudulent"],
+      datasets: [{
+        data: [ds.legit, ds.fraud],
+        backgroundColor: ["#22c55e", "#ef4444"],
+        borderColor: ["#16a34a", "#dc2626"],
+        borderWidth: 2,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: "65%",
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: { color: "#9ca3af", font: { family: "Syne", size: 12 }, padding: 16 }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()} (${((ctx.raw / (ds.total)) * 100).toFixed(1)}%)`
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── Model Comparison Bar Chart ───────────────────────────────────────────────
+function renderModelCompareChart(lr, rf) {
+  const ctx = document.getElementById("modelCompareChart").getContext("2d");
+  if (modelCompareChart) modelCompareChart.destroy();
+
+  modelCompareChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["Accuracy", "Precision", "Recall", "F1", "ROC-AUC"],
+      datasets: [
+        {
+          label: "Logistic Regression",
+          data: [lr.accuracy, lr.precision, lr.recall, lr.f1, lr.roc_auc],
+          backgroundColor: "rgba(99, 102, 241, 0.75)",
+          borderColor: "#6366f1",
+          borderWidth: 1.5,
+          borderRadius: 4
+        },
+        {
+          label: "Random Forest",
+          data: [rf.accuracy, rf.precision, rf.recall, rf.f1, rf.roc_auc],
+          backgroundColor: "rgba(34, 197, 94, 0.75)",
+          borderColor: "#22c55e",
+          borderWidth: 1.5,
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          min: 50, max: 100,
+          ticks: { color: "#9ca3af", callback: v => v + "%" },
+          grid: { color: "rgba(255,255,255,0.05)" }
+        },
+        x: {
+          ticks: { color: "#9ca3af", font: { size: 10 } },
+          grid: { display: false }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: { color: "#9ca3af", font: { family: "Syne", size: 11 }, padding: 12 }
+        },
+        tooltip: {
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw}%` }
+        }
+      }
+    }
+  });
+}
+
+// ── Single Prediction ────────────────────────────────────────────────────────
+async function predictFraud() {
+  const payload = {
+    transaction_amount: getVal("f_amount") || 0,
+    time_since_last_txn: getVal("f_time") || 0,
+    num_transactions_today: getVal("f_txn_count") || 0,
+    distance_from_home: getVal("f_distance") || 0,
+    is_foreign_transaction: getVal("f_foreign"),
+    card_present: getVal("f_card"),
+    hour_of_day: getVal("f_hour") || 12,
+    merchant_risk_score: getVal("f_risk") || 0.1
+  };
+
+  showLoader("Analyzing transaction…");
+
+  try {
+    const res = await fetch("/api/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    hideLoader();
+
+    if (!data.success) {
+      showToast("Prediction error: " + data.error, "error");
+      return;
+    }
+
+    displayPredictionResult(data);
+  } catch (e) {
+    hideLoader();
+    showToast("Network error. Is Flask running?", "error");
+  }
+}
+
+function displayPredictionResult(data) {
+  const el = document.getElementById("predictionResult");
+  el.classList.remove("d-none");
+  el.classList.add("result-animate");
+
+  const badge = document.getElementById("verdictBadge");
+  const icon = document.getElementById("verdictIcon");
+  const text = document.getElementById("verdictText");
+
+  if (data.is_fraud) {
+    badge.className = "verdict-badge verdict-fraud";
+    icon.className = "bi bi-exclamation-triangle-fill";
+    text.textContent = "FRAUDULENT";
+  } else {
+    badge.className = "verdict-badge verdict-legit";
+    icon.className = "bi bi-shield-check-fill";
+    text.textContent = "LEGITIMATE";
+  }
+
+  // Animate bars
+  setTimeout(() => {
+    document.getElementById("barLegit").style.width = data.legit_probability + "%";
+    document.getElementById("barFraud").style.width = data.fraud_probability + "%";
+  }, 100);
+
+  setText("txtLegit", data.legit_probability + "%");
+  setText("txtFraud", data.fraud_probability + "%");
+  setText("lrProb", data.lr_probability + "%");
+  setText("rfProb", data.rf_probability + "%");
+
+  const riskEl = document.getElementById("riskLevel");
+  riskEl.textContent = data.risk_level;
+  riskEl.className = "breakdown-val risk-" + data.risk_level.toLowerCase();
+
+  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// ── Quick Fill ───────────────────────────────────────────────────────────────
+function fillSample(type) {
+  if (type === "legit") {
+    setVal("f_amount", "85.50");
+    setVal("f_time", "18");
+    setVal("f_txn_count", "2");
+    setVal("f_distance", "3");
+    setVal("f_hour", "14");
+    setVal("f_risk", "0.05");
+    document.getElementById("f_foreign").value = "0";
+    document.getElementById("f_card").value = "1";
+    showToast("Filled with a typical legitimate transaction", "success");
+  } else {
+    setVal("f_amount", "4200.00");
+    setVal("f_time", "0.3");
+    setVal("f_txn_count", "15");
+    setVal("f_distance", "850");
+    setVal("f_hour", "2");
+    setVal("f_risk", "0.88");
+    document.getElementById("f_foreign").value = "1";
+    document.getElementById("f_card").value = "0";
+    showToast("Filled with a suspicious fraud pattern", "warning");
+  }
+}
+
+// ── CSV Upload ───────────────────────────────────────────────────────────────
+function handleFileUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  document.getElementById("uploadProgress").classList.remove("d-none");
+  document.getElementById("uploadResults").classList.add("d-none");
+  animateProgress();
+
+  fetch("/api/upload", { method: "POST", body: formData })
+    .then(r => r.json())
     .then(data => {
-        document.getElementById("result").innerText =
-            data.result + " (" + data.probability + "%) - " + data.risk;
+      document.getElementById("uploadProgress").classList.add("d-none");
+      if (!data.success) {
+        showToast("Upload failed: " + data.error, "error");
+        return;
+      }
+      displayUploadResults(data);
+    })
+    .catch(() => {
+      document.getElementById("uploadProgress").classList.add("d-none");
+      showToast("Upload failed. Check server.", "error");
     });
 }
-</script>
 
+function animateProgress() {
+  let w = 0;
+  const bar = document.getElementById("progressBar");
+  const timer = setInterval(() => {
+    w = Math.min(w + Math.random() * 15, 90);
+    bar.style.width = w + "%";
+    if (w >= 90) clearInterval(timer);
+  }, 200);
+}
+
+function displayUploadResults(data) {
+  document.getElementById("uploadResults").classList.remove("d-none");
+  setText("totalCount", data.total.toLocaleString());
+  setText("legitCount", data.legit_count.toLocaleString());
+  setText("fraudCount", data.fraud_count.toLocaleString());
+
+  const tbody = document.getElementById("resultTableBody");
+  tbody.innerHTML = "";
+  data.results.slice(0, 50).forEach((row, i) => {
+    const tr = document.createElement("tr");
+    const isFraud = row.prediction === 1;
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>$${parseFloat(row.transaction_amount || 0).toFixed(2)}</td>
+      <td>${row.fraud_probability}%</td>
+      <td><span class="verdict-tag ${isFraud ? "tag-fraud" : "tag-legit"}">${row.verdict}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  showToast(`Scanned ${data.total} transactions — ${data.fraud_count} flagged as fraud`, "success");
+  document.getElementById("uploadResults").scrollIntoView({ behavior: "smooth" });
+}
+
+// ── Retrain ──────────────────────────────────────────────────────────────────
+async function retrainModels() {
+  showLoader("Retraining models on fresh data…");
+  try {
+    const res = await fetch("/api/retrain", { method: "POST" });
+    const data = await res.json();
+    hideLoader();
+    if (data.success) {
+      updateDashboard(data.metrics);
+      showToast("Models retrained successfully!", "success");
+    }
+  } catch (e) {
+    hideLoader();
+    showToast("Retrain failed", "error");
+  }
+}
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+function getVal(id) {
+  return document.getElementById(id)?.value;
+}
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val;
+}
+
+function showLoader(text = "Processing…") {
+  document.getElementById("loaderText").textContent = text;
+  document.getElementById("loaderOverlay").classList.remove("d-none");
+}
+function hideLoader() {
+  document.getElementById("loaderOverlay").classList.add("d-none");
+}
+
+let toastTimer = null;
+function showToast(msg, type = "info") {
+  const wrap = document.getElementById("toastWrap");
+  const el = document.getElementById("toastMsg");
+  el.textContent = msg;
+  el.className = `toast-msg toast-${type}`;
+  wrap.classList.add("toast-show");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => wrap.classList.remove("toast-show"), 3500);
+}
+
+// Drag-and-drop for upload zone
+const zone = document.getElementById("uploadZone");
+["dragenter","dragover"].forEach(e => zone.addEventListener(e, ev => {
+  ev.preventDefault(); zone.classList.add("drag-over");
+}));
+["dragleave","drop"].forEach(e => zone.addEventListener(e, ev => {
+  ev.preventDefault(); zone.classList.remove("drag-over");
+  if (e === "drop" && ev.dataTransfer.files[0]) {
+    const fakeInput = { files: ev.dataTransfer.files };
+    handleFileUpload(fakeInput);
+  }
+}));
+</script>
 </body>
 </html>

@@ -5,19 +5,21 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.metrics import accuracy_score
+from sklearn.utils import resample
 
 app = Flask(__name__)
 
-rf_model = None
+# Global variables
 lr_model = None
+rf_model = None
 scaler = None
-trained = False
-
-metrics_data = {}
+model_trained = False
 
 
-# ---------- DATA ----------
+# ─────────────────────────────────────────
+# GENERATE DATA (NO CSV ANYWHERE)
+# ─────────────────────────────────────────
 def generate_data(n=1000):
     np.random.seed(42)
 
@@ -38,19 +40,22 @@ def generate_data(n=1000):
         "is_fraud": 1
     })
 
-    return pd.concat([df_legit, df_fraud]).sample(frac=1)
+    df = pd.concat([df_legit, df_fraud]).sample(frac=1)
+    return df
 
 
-# ---------- TRAIN ----------
-def train():
-    global rf_model, lr_model, scaler, trained, metrics_data
+# ─────────────────────────────────────────
+# TRAIN MODEL (LIGHTWEIGHT)
+# ─────────────────────────────────────────
+def train_model():
+    global lr_model, rf_model, scaler, model_trained
 
     df = generate_data(1000)
 
     X = df[["amount", "distance", "transactions"]]
     y = df["is_fraud"]
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
@@ -62,63 +67,43 @@ def train():
     lr_model.fit(X_train, y_train)
     rf_model.fit(X_train, y_train)
 
-    # Predictions
-    lr_pred = lr_model.predict(X_test)
-    rf_pred = rf_model.predict(X_test)
-
-    # Metrics
-    lr_acc = accuracy_score(y_test, lr_pred)
-    rf_acc = accuracy_score(y_test, rf_pred)
-
-    cm = confusion_matrix(y_test, rf_pred)
-
-    metrics_data = {
-        "lr_acc": round(lr_acc * 100, 2),
-        "rf_acc": round(rf_acc * 100, 2),
-        "cm": cm.tolist(),
-        "fraud_count": int(sum(y)),
-        "legit_count": int(len(y) - sum(y))
-    }
-
-    trained = True
+    model_trained = True
 
 
-# ---------- ROUTES ----------
+# ─────────────────────────────────────────
+# ROUTES
+# ─────────────────────────────────────────
 @app.route("/")
 def home():
-    global trained
-    if not trained:
-        train()
-    return render_template("index.html", metrics=metrics_data)
+    global model_trained
+
+    if not model_trained:
+        train_model()
+
+    return render_template("index.html")
 
 
 @app.route("/predict", methods=["POST"])
 def predict():
     data = request.get_json()
 
-    X = np.array([[ 
-        float(data["amount"]),
-        float(data["distance"]),
-        float(data["transactions"])
-    ]])
+    amount = float(data.get("amount", 0))
+    distance = float(data.get("distance", 0))
+    transactions = float(data.get("transactions", 0))
 
+    X = np.array([[amount, distance, transactions]])
     X = scaler.transform(X)
 
     prob = rf_model.predict_proba(X)[0][1]
 
-    if prob > 0.8:
-        risk = "HIGH RISK"
-    elif prob > 0.5:
-        risk = "MEDIUM RISK"
-    else:
-        risk = "LOW RISK"
-
     return jsonify({
         "probability": round(prob * 100, 2),
-        "result": "Fraud" if prob > 0.5 else "Legit",
-        "risk": risk
+        "result": "Fraud" if prob > 0.5 else "Legit"
     })
 
 
+# ─────────────────────────────────────────
+# MAIN
+# ─────────────────────────────────────────
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
